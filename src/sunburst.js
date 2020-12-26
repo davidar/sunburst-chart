@@ -186,7 +186,8 @@ export default Kapsule({
     // Exiting
     const oldSlice = slice.exit().transition(transition).style('opacity', 0).remove();
     oldSlice.select('path.main-arc').attrTween('d', d => () => state.arc(d));
-    oldSlice.select('path.hidden-arc').attrTween('d', d => () => middleArcLine(d));
+    oldSlice.select('path.hidden-arc-upper').attrTween('d', d => () => middleArcLine(d, true));
+    oldSlice.select('path.hidden-arc-lower').attrTween('d', d => () => middleArcLine(d, false));
 
     // Entering
     const newSlice = slice.enter().append('g')
@@ -217,22 +218,26 @@ export default Kapsule({
       .style('fill', d => colorOf(d.data, d.parent));
 
     newSlice.append('path')
-      .attr('class', 'hidden-arc')
-      .attr('id', d => `hidden-arc-${state.chartId}-${d.id}`);
+      .attr('class', 'hidden-arc-upper')
+      .attr('id', d => `hidden-arc-upper-${state.chartId}-${d.id}`);
+    newSlice.append('path')
+      .attr('class', 'hidden-arc-lower')
+      .attr('id', d => `hidden-arc-lower-${state.chartId}-${d.id}`);
 
     const label = newSlice.append('text')
         .attr('class', 'path-label');
 
-    // Add white contour
     label.append('textPath')
-      .attr('class', 'text-contour')
+      .attr('class', 'text-upper')
+      .attr('style', d => `font-size:${textSize(d)}em`)
       .attr('startOffset','50%')
-      .attr('xlink:href', d => `#hidden-arc-${state.chartId}-${d.id}` );
+      .attr('xlink:href', d => `#hidden-arc-upper-${state.chartId}-${d.id}` );
 
     label.append('textPath')
-      .attr('class', 'text-stroke')
+      .attr('class', 'text-lower')
+      .attr('style', d => `font-size:${textSize(d)}em`)
       .attr('startOffset','50%')
-      .attr('xlink:href', d => `#hidden-arc-${state.chartId}-${d.id}` );
+      .attr('xlink:href', d => `#hidden-arc-lower-${state.chartId}-${d.id}` );
 
     // Entering + Updating
     const allSlices = slice.merge(newSlice);
@@ -243,8 +248,10 @@ export default Kapsule({
       .attrTween('d', d => () => state.arc(d))
       .style('fill', d => colorOf(d.data, d.parent));
 
-    allSlices.select('path.hidden-arc').transition(transition)
-      .attrTween('d', d => () => middleArcLine(d));
+    allSlices.select('path.hidden-arc-upper').transition(transition)
+      .attrTween('d', d => () => middleArcLine(d, true));
+    allSlices.select('path.hidden-arc-lower').transition(transition)
+      .attrTween('d', d => () => middleArcLine(d, false));
 
     allSlices.select('.path-label')
       .transition(transition)
@@ -254,20 +261,24 @@ export default Kapsule({
     allSlices.selectAll('text.path-label').select('textPath.text-contour');
     allSlices.selectAll('text.path-label').select('textPath.text-stroke');
 
-    allSlices.selectAll('text.path-label').selectAll('textPath')
-      .text(d => nameOf(d.data));
+    allSlices.selectAll('text.path-label').selectAll('textPath.text-upper')
+      .text(d => nameOf(d.data).split(/\n/)[0]);
+    allSlices.selectAll('text.path-label').selectAll('textPath.text-lower')
+      .text(d => nameOf(d.data).split(/\n/)[1]);
 
     //
 
-    function middleArcLine(d) {
+    function middleArcLine(d, upper) {
       const halfPi = Math.PI/2;
       const angles = [state.angleScale(d.x0) - halfPi, state.angleScale(d.x1) - halfPi];
-      const r = Math.max(0, (state.radiusScale(d.y0) + state.radiusScale(d.y1)) / 2);
+      const middleAngle = (angles[1] + angles[0]) / 2;
+      const invertDirection = middleAngle > 0 && middleAngle < Math.PI; // On lower quadrants write text ccw
+      if (invertDirection) upper = !upper;
+      const r = upper ? Math.max(0, (state.radiusScale(d.y0) + state.radiusScale(d.y1) * 2) / 3)
+                      : Math.max(0, (state.radiusScale(d.y0) * 2 + state.radiusScale(d.y1)) / 3);
 
       if (!r || !(angles[1] - angles[0])) return '';
 
-      const middleAngle = (angles[1] + angles[0]) / 2;
-      const invertDirection = middleAngle > 0 && middleAngle < Math.PI; // On lower quadrants write text ccw
       if (invertDirection) { angles.reverse(); }
 
       const path = d3Path();
@@ -276,10 +287,17 @@ export default Kapsule({
     }
 
     function textFits(d) {
+      return true;
       const deltaAngle = state.angleScale(d.x1) - state.angleScale(d.x0);
       const r = Math.max(0, (state.radiusScale(d.y0) + state.radiusScale(d.y1)) / 2);
       const perimeter = r * deltaAngle;
       return nameOf(d.data).toString().length * CHAR_PX < perimeter;
+    }
+
+    function textSize(d) {
+      const deltaR = (state.radiusScale(d.y1) - state.radiusScale(d.y0)) / state.radiusScale(d.y1);
+      console.error(deltaR);
+      return 4.4 * deltaR;
     }
 
     function getNodeStack(d) {

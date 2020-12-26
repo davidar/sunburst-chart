@@ -29,7 +29,7 @@
   transition: opacity .05s;
 }
 
-.sunburst-viz .hidden-arc {
+.sunburst-viz .hidden-arc-upper, .sunburst-viz .hidden-arc-lower {
   fill: none;
 }
 
