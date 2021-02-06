@@ -224,16 +224,19 @@ export default Kapsule({
       .attr('class', 'hidden-arc-lower')
       .attr('id', d => `hidden-arc-lower-${state.chartId}-${d.id}`);
 
-    const label = newSlice.append('text')
+    const label1 = newSlice.append('text')
         .attr('class', 'path-label');
 
-    label.append('textPath')
+    label1.append('textPath')
       .attr('class', 'text-upper')
       .attr('style', d => `font-size:${textSize(d)}em`)
       .attr('startOffset','50%')
       .attr('xlink:href', d => `#hidden-arc-upper-${state.chartId}-${d.id}` );
 
-    label.append('textPath')
+    const label2 = newSlice.append('text')
+        .attr('class', 'path-label');
+
+    label2.append('textPath')
       .attr('class', 'text-lower')
       .attr('style', d => `font-size:${textSize(d)}em`)
       .attr('startOffset','50%')
